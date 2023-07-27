@@ -1,17 +1,70 @@
+provider "aws" {
+    region = var.region
+}
+
+resource "aws_vpc" "myvpc" {
+    cidr_block = var.vpcCidir
+    tags = {
+      Name = "dev_vpc"
+    }
+}
+
+resource "aws_internet_gateway" "gw" {
+  vpc_id = aws_vpc.myvpc.id
+
+  tags = {
+    Name = "IGW"
+  }
+}
+
+resource "aws_subnet" "public-sub" {
+  vpc_id     = aws_vpc.myvpc.id
+  cidr_block = var.PubsubnetCidir
+  availability_zone = var.PubSubAZ
+  tags = {
+    Name = var.publicName
+  }
+}
+
+resource "aws_subnet" "Private_sub" {
+  vpc_id     = aws_vpc.myvpc.id
+  cidr_block = var.PrSubCidir
+  availability_zone = var.prSubAz
+  tags = {
+    Name = var.PrSubName
+  }
+}
+resource "aws_route_table" "mypubRT" {
+  vpc_id = aws_vpc.myvpc.id
+  route {
+    cidr_block = var.GateWayCid
+    gateway_id = aws_internet_gateway.gw.id
+  }
+  tags = {
+    Name = var.RTName
+  }
+
+}
+resource "aws_route_table_association" "pubblic" {
+    subnet_id = aws_subnet.public-sub.id
+    route_table_id = aws_route_table.mypubRT.id
+}
+
+
 resource "aws_instance" "app" {
-    ami = "ami-053b0d53c279acc90"
-    instance_type = "t2.micro"
+    ami = var.ec2AMI
+    instance_type = var.ec2instancetype
     subnet_id = aws_subnet.public-sub.id
     vpc_security_group_ids = [
       aws_security_group.mysg.id, 
       aws_security_group.myjenkinssg.id]
     user_data = ("jenkinstallation.sh")
     associate_public_ip_address = true
-    count = 2
-    key_name = "ec2_keys"
+    key_name = var.mykeys
     tags = {
-      Name = "jenkins-server${count.index + 1}"
+      Name = "jenkins-server"
     }
+    
 }
 
 
